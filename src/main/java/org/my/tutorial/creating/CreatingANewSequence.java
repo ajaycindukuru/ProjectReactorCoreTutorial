@@ -7,13 +7,14 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class CreatingANewSequence {
 
     // 1. Creating a New Sequence...
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
     // . that emits a T, and i already have: just (Flux|Mono)
 
@@ -113,6 +114,52 @@ public class CreatingANewSequence {
         flux.subscribe(val -> System.out.println("Subscriber 2 Received "+val));*/
 
     // . that depends on a disposable resource: using (Flux|Mono)
+
+        /*Flux.using(
+                () -> {
+                    System.out.println("Opening Resource");
+                    return new StringBuilder("Resource");
+                },
+                resource -> {
+                    System.out.println("Using Resource :: " +resource);
+                    return Flux.just("A", "B", "C");
+                },
+                resource -> System.out.println("Cleaning up Resource")
+        ).subscribe(
+                System.out::println,
+                System.err::println,
+                () -> System.out.println("Done")
+        );*/
+
+    // . that generates events programmatically (can use state):
+    // o ... synchronous and one by one
+        /*Flux.generate(() -> 1, (state, sink) -> {
+                    System.out.print("Current Thread :: " +Thread.currentThread().getName() +" <- ");
+            sink.next(state);
+            if (state==5) {
+                sink.complete();
+            }
+            return state + 1;
+        },
+                        state -> System.out.println("Current Thread :: " +Thread.currentThread().getName() +" <- Final State :: " +state))
+                .subscribe(System.out::println);*/
+
+    // o ... asynchronous (can also be sync), multiple emissions possible in one pass : Flux#create (Mono#create without multiple emission aspect)
+
+        /*Flux<String> flux = Flux.create(sink -> {
+           new Thread(() -> {
+               for (int i=1; i<=5; i++) {
+                   sink.next("Event " +i+ " is running on thread "+Thread.currentThread().getName());
+                   try {
+                       Thread.sleep(500);
+                   } catch (InterruptedException e) {
+                       throw new RuntimeException(e);
+                   }
+               }
+               sink.complete();
+           }).start();
+        });
+        flux.subscribe(System.out::println);*/
 
     }
 
