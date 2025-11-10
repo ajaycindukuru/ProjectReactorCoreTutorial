@@ -5,6 +5,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -131,5 +132,107 @@ public class PeekIntoSequence {
                 .doOnTerminate(() -> System.out.println("Cleaning up on termination"))
                 .doAfterTerminate(() -> System.out.println("Cleaning up After termination"))
                 .subscribe();*/
+
+        // o ... any type of signal, represented as Signal: doOnEach (Flux|Mono)
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==3) throw new RuntimeException("Boom");
+                    return i;
+                })
+                .doOnEach(val -> System.out.println("Received " +val))
+                .subscribe(System.out::println);*/
+        //o ... any terminating condition (complete, error, cancel): doFinally (FLux|Mono)
+
+        /*Flux<Integer> flux = Flux.range(1, 5)
+                .doFinally(signal -> System.out.println("Last know signal "+signal));
+
+        flux.subscribe(System.out::println);
+        Thread.sleep(1000);
+
+        flux.map(i -> {
+            if (i==3) throw new RuntimeException("Boom..");
+            return i;
+        })
+                .subscribe(System.out::println);*/
+
+        // o ... log what happened internally: log (Flux|Mono)
+
+        /*Flux.range(1, 5)
+                .log("range")
+                .subscribe(new BaseSubscriber<Integer>() {
+                    @Override
+                    protected void hookOnNext(Integer value) {
+                        System.out.println("OnNext - Emitting " +value);
+                    }
+
+                    @Override
+                    protected void hookOnSubscribe(Subscription subscription) {
+                        System.out.println("Subscribed");
+                        requestUnbounded();
+                    }
+                });*/
+
+        /*Flux.interval(Duration.ofMillis(100))
+                .log("interval")
+                .subscribe(System.out::println);
+
+        Thread.sleep(1000);*/
+
+        // . I want to know of all events:
+        // o ... each represented as Signal object:
+        // o ... in a callback outside the sequence: doOnEach (Flux|Mono)
+
+        /*Flux.just("A", "B", "C")
+                .map(l -> {
+                    if (l.equals("C")) throw new RuntimeException("Boom");
+                    return l;
+                })
+                .doOnEach(signal -> System.out.println("Signal :: "+signal))
+                .subscribe(System.out::println);*/
+
+        // o ... instead of the original onNext emission: materialize (Flux|Mono)
+
+        /*Flux<String> flux = Flux.create(sink -> {
+            sink.next("A");
+            sink.next("B");
+            sink.next("C");
+            sink.complete();
+        });
+
+        flux.map(l -> {
+            if (l.equals("C")) throw new RuntimeException("Boom");
+            return l;
+        })
+        .materialize()
+        .subscribe(new BaseSubscriber<Signal<String>>() {
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                System.out.println("Subscribed");
+                requestUnbounded();
+            }
+
+            @Override
+            protected void hookOnNext(Signal<String> value) {
+                System.out.println("Received " +value);
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                System.out.println("Completed");
+            }
+
+            @Override
+            protected void hookOnError(Throwable throwable) {
+                System.out.println("Failed with error " +throwable);
+            }
+        });*/
+
+        // o ... any get back to the onNexts: dematerialize (FLux|Mono)
+        /*Flux.just(1, 5)
+                .materialize()
+                .doOnNext(signal -> System.out.println("OnNext Signal "+signal))
+                .dematerialize()
+                .doOnNext(val -> System.out.println("onNext Received "+val))
+                .subscribe(System.out::println);*/
     }
 }
