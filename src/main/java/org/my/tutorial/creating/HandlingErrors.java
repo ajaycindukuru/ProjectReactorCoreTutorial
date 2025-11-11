@@ -1,14 +1,20 @@
 package org.my.tutorial.creating;
 
 import jdk.swing.interop.SwingInterOpUtils;
+import reactor.core.publisher.BufferOverflowStrategy;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.time.LocalTime.now;
 
 public class HandlingErrors {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
         // . I want to create an error sequence: error (Flux|Mono)
         /*Flux.error(new RuntimeException("Boom"))
@@ -129,7 +135,178 @@ public class HandlingErrors {
         // Consumer - cleanup resource initialized by supplier
 
         // . I want to recover from errors...
+        // o ... by falling back
+        // o ... to a value: onErrorReturn (Flux|Mono)
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) throw new RuntimeException("Boom!...");
+                    return i;
+                })
+                .onErrorReturn(0)
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));*/
+        // o ... to a completion ("swallowing" the error): onErrorComplete (Flux|Mono)
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) throw new RuntimeException("Boom!...");
+                    return i;
+                })
+                .onErrorComplete()
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));*/
+        // o ... to a Publisher or Mono, possibly different ones depending on the error: Flux#onErrorResume and Mono#onErrorResume
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) throw new RuntimeException("Boom!...");
+                    return i;
+                })
+                .onErrorResume(error -> Flux.range(10, 5))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));*/
 
+        // o ... by retrying...
+        // o ... with a simple policy (max number of attempts): retry (Flux|Mono), retry(long) (Flux|Mono)
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) throw new RuntimeException("Boom!...");
+                    return i;
+                })
+                .retry(1)
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));*/
+
+        // o ... triggered by a companion control Flux: retryWhen (Flux|Mono)
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) throw new RuntimeException("Boom!...");
+                    return i;
+                })
+                .retryWhen(Retry.fixedDelay(1, Duration.ofMillis(1000)))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));
+
+        Thread.sleep(1500);*/
+        // o ... using a standard back-off strategy (exponential backoff with jitter): retryWhen(Retry.backoff(...)) (Flux|Mono) (see also other factory methods)
+        // o ... backoff
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) {
+                        System.out.println("Current time " +now());
+                        throw new RuntimeException("Boom!...");}
+                    return i;
+                })
+                .retryWhen(Retry.backoff(2, Duration.ofMillis(3000)))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));
+
+        Thread.sleep(10000);*/
+        // o ...
+        /*Flux.range(1, 5)
+                .map(i -> {
+                    if (i==4) throw new RuntimeException("Boom!...");
+                    return i;
+                })
+                .retryWhen(Retry.withThrowable(signal -> Flux.just("A")))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .subscribe(val -> System.out.println("Subscriber Received "+val),
+                        err -> System.out.println("Subscriber Failed with error "+err),
+                        () -> System.out.println("Done"));
+
+        Thread.sleep(1500);*/
+
+        // . I want to deal with backpressure "errors" (request max from upstream and apply the strategy when downstream does not produce enough requests)...
+        // o ... by throwing a special IllegalStateException: Flux#onBackPressureError
+
+        /*Flux.range(1, 10)
+                .log()
+                .onBackpressureError()
+                .publishOn(Schedulers.single(), 1)
+                .doOnNext(i -> {
+                    System.out.println("Processing "+i);
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .subscribe(
+                        v -> System.out.println("Received " + v),
+                                e -> System.err.println("Failed with error "+e));
+
+        Thread.sleep(5000);*/
+
+        // o ... except the last one seen: Flux#onBackPressureLatest
+
+        /*Flux.range(1, 10)
+                .log()
+                .onBackpressureLatest()
+                .publishOn(Schedulers.single(), 1)
+                .doOnNext(i -> {
+                    System.out.println("Processing "+i);
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarding" +val))
+                .subscribe(
+                        v -> System.out.println("Received " + v),
+                        e -> System.err.println("Failed with error "+e));
+
+        Thread.sleep(6000);*/
+
+        // o ... by buffering excess values (bounded or unbounded): Flux#onBackPressureBuffer
+        /*Flux.range(1, 10)
+                .log()
+                .onBackpressureBuffer(3)
+                .publishOn(Schedulers.single(), 1)
+                .doOnNext(i -> {
+                    System.out.println("Processing "+i);
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarding" +val))
+                .subscribe(
+                        v -> System.out.println("Received " + v),
+                        e -> System.err.println("Failed with error "+e));
+
+        Thread.sleep(6000);*/
+
+        // o ... and applying a strategy when bounded buffer also overflows: Flux#onBackPressureBuffer with a BufferOverflowStrategy
+        /*Flux.range(1, 10)
+                .log()
+                .onBackpressureBuffer(3, BufferOverflowStrategy.DROP_LATEST)
+                .publishOn(Schedulers.single(), 1)
+                .doOnNext(i -> {
+                    System.out.println("Processing "+i);
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarding " +val))
+                .subscribe(
+                        v -> System.out.println("Received " + v),
+                        e -> System.err.println("Failed with error "+e));
+
+        Thread.sleep(6000);*/
 
     }
 }
