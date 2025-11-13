@@ -179,6 +179,84 @@ public class FilteringASequence {
                 .doOnEach(signal -> System.out.println("Signal "+signal))
                 .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
                 .subscribe(val -> System.out.println("Received "+val));*/
+
+        // o ... by sampling items:
+        // o ... by duration: Flux#sample(Duration)
+        /*Flux.interval(Duration.ofMillis(200))
+                .take(10)
+                .sample(Duration.ofMillis(500))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val));
+        Thread.sleep(5000);*/
+        // o ... but keeping the first element in the sampling window instead of the last sampleFirst
+        /*Flux.interval(Duration.ofMillis(200))
+                .take(10)
+                .sampleFirst(Duration.ofMillis(500))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val));
+        Thread.sleep(5000);*/
+        // o ... by a publisher-based window: Flux#sample(Publisher)
+        /*var source = Flux.interval(Duration.ofMillis(200))
+                .doOnNext(i -> System.out.println("Source emitted "+i));
+        var sampler = Flux.interval(Duration.ofSeconds(1))
+                .doOnNext(i -> System.out.println("----- Sample tick ---- "));
+
+        source.sample(sampler)
+                //.take(5)
+                .subscribe(val -> System.out.println("Sampled value "+val));
+        Thread.sleep(6000);*/
+        // o ... based on publisher "timeout"# Flux#sampleTimeout (each element triggers a publisher, and is emitted if that publisher does not overlap with the next)
+        /*var source = Flux.just("A", "B", "C", "D")
+                .delayElements(Duration.ofMillis(300))
+                .doOnNext(i -> System.out.println("Source emitted "+i));
+        var sampler = Flux.interval(Duration.ofMillis(400))
+                .doOnNext(i -> System.out.println("----- Sample tick ---- " +i));
+
+        source.sampleTimeout(i -> sampler)
+                //.take(5)
+                .subscribe(val -> System.out.println("Sampled value "+val));
+        Thread.sleep(2000);*/
+
+        // o... I expect at most 1 element (error if more than one).
+        // o ... and i want an error if the sequence is empty: FLux#single()
+
+        /*Flux.empty()
+                .single()
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));*/
+
+        /*Flux.just(1, 3)
+                .single()
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));*/
+
+        /*Flux.just(1)
+                .single()
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));*/
+        // o ... and i want a default value if the sequence is empty: Flux#single(T)
+        /*Flux.empty()
+                .single(1)
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));*/
+        // o ... and i accept an empty sequence as well: Flux#singleOrEmpty
+        /*Flux.empty()
+                .singleOrEmpty()
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Discarded "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));*/
+
     }
 
     private static Mono<Boolean> isEvenAsync(Integer f) {
