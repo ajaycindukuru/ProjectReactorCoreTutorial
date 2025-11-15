@@ -4,6 +4,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SplittingAFlux {
 
@@ -181,6 +183,26 @@ public class SplittingAFlux {
 
         /*Flux.interval(Duration.ofMillis(200))
                 .bufferWhen(Flux.interval(Duration.ofMillis(700)), i -> Flux.interval(Duration.ofSeconds(1)))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Dropped "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));
+        Thread.sleep(3000);*/
+
+        // o ... into an arbitrary collection type C: use variants like buffer(int, Supplier<C>)
+        /*Flux.interval(Duration.ofMillis(100))
+                .buffer(10, () -> new ArrayList<>(10))
+                .doOnEach(signal -> System.out.println("Signal "+signal))
+                .doOnDiscard(Integer.class, val -> System.out.println("Dropped "+val))
+                .subscribe(val -> System.out.println("Received "+val),
+                        err -> System.out.println("Failed with error "+err));
+        Thread.sleep(3000);*/
+        //. I want to split a Flux<T> so that element that share a characteristics end up in the same sub-flux: groupBy(Function<T, K>):
+        // Note that this returns a Flux<GroupedFlux<K,T>>, each inner GroupedFlux shares the same K key accessible through key()
+
+        /*Flux.range(1, 20)
+                .groupBy(i -> i % 2)
+                .flatMap(Flux::collectList)
                 .doOnEach(signal -> System.out.println("Signal "+signal))
                 .doOnDiscard(Integer.class, val -> System.out.println("Dropped "+val))
                 .subscribe(val -> System.out.println("Received "+val),
