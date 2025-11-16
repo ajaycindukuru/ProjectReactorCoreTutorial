@@ -81,5 +81,50 @@ public class MulticastingAFluxToSeveralSubscribers {
         sub2.dispose();
         Thread.sleep(3000);*/
 
+        // . I want to cache data from a Publisher and replay it to later subscribers:
+        // o ... up to n elements: cache(int)
+        /*var flux = Flux.range(1, 10)
+                .doOnSubscribe(val -> System.out.println("Subscribed to source"))
+                .cache(3);
+
+        flux.subscribe(val -> System.out.println("Sub1 Received "+val));
+
+        Thread.sleep(2000);
+        flux.subscribe(val -> System.out.println("Sub2 Received "+val));*/
+
+        // o ... caching latest elements seen within a Duration (Time-To-Live): cache(Duration) (Flux|mono)
+        /*var flux = Flux.range(1, 10)
+                .delayElements(Duration.ofMillis(200))
+                .doOnSubscribe(val -> System.out.println("Subscribed to source"))
+                .cache(Duration.ofMillis(1000));
+
+        flux.subscribe(val -> System.out.println("Sub1 Received "+val));
+
+        Thread.sleep(2000);
+        flux.subscribe(val -> System.out.println("Sub2 Received "+val));*/
+
+        // o ... but retain no more than n elements
+        /*var flux = Flux.range(1, 10)
+                .delayElements(Duration.ofMillis(200))
+                .doOnSubscribe(val -> System.out.println("Subscribed to source"))
+                .cache(2, Duration.ofMillis(1000));
+
+        flux.subscribe(val -> System.out.println("Sub1 Received "+val));
+
+        Thread.sleep(2000);
+        flux.subscribe(val -> System.out.println("Sub2 Received "+val));*/
+
+        // o ... but without immediately triggering the source: Flux#replay (returns a ConnectableFlux)
+
+        /*var flux = Flux.range(1, 10)
+                //.delayElements(Duration.ofMillis(200))
+                .replay(4);
+
+
+        flux.subscribe(val -> System.out.println("Sub 1 received "+val));
+        flux.connect();
+        Thread.sleep(3000);
+        flux.subscribe(val -> System.out.println("Subs 2 received "+val));*/
+
     }
 }
